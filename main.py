@@ -10,8 +10,8 @@ from galxy import Gasless, Galxy, Gassed
 from config import *
 
 
-async def get_info(ID):
-    info = await Galxy.get_info_by_id(ID)
+async def get_info(id_):
+    info = await Galxy.get_info_by_id(id_)
     # print(info)
     data = info["data"]["campaign"]
 
@@ -28,62 +28,63 @@ async def get_info(ID):
     return status, address_nft, gas_type, number_id, name, chain
 
 
-def check_claim_data(claim_nft_data, INFO_NFT, ADDRESS):
-    if claim_nft_data["data"].get("prepareParticipate").get("allow") == False:
+def check_claim_data(claim_nft_data, info_nft, address):
+    if not claim_nft_data["data"].get("prepareParticipate").get("allow"):
         if (
             claim_nft_data["data"].get("prepareParticipate").get("disallowReason")
             == "Exceed limit, available claim count is 0"
         ):
             logger.info(
-                f"CLAIM | INFO | {INFO_NFT[-2]} | {ADDRESS} | Exceed limit, available claim count is 0"
+                f"CLAIM | INFO | {info_nft[-2]} | {address} | Exceed limit, available claim count is 0"
             )
             return True
+        disallow_reason = claim_nft_data['data']['prepareParticipate']['disallowReason']
         logger.info(
-            f"CLAIM | FAILED | {INFO_NFT[-2]} | {ADDRESS} | {claim_nft_data['data']['prepareParticipate']['disallowReason']}"
+            f"CLAIM | FAILED | {info_nft[-2]} | {address} | {disallow_reason}"
         )
         return True
     return False
 
 
-async def gasles(key, ID, INFO_NFT):
+async def gasless(key, id_, info_nft):
     ADDRESS = w3.eth.account.from_key(key).address
 
-    claim_nft_data = await Galxy.claim(ADDRESS, ID, W, INFO_NFT[-1])
+    claim_nft_data = await Galxy.claim(ADDRESS, id_, W, info_nft[-1])
 
-    if check_claim_data(claim_nft_data, INFO_NFT, ADDRESS):
+    if check_claim_data(claim_nft_data, info_nft, ADDRESS):
         return
 
-    logger.info(f"CLAIM | PENDING | {INFO_NFT[-2]} | {ADDRESS}")
+    logger.info(f"CLAIM | PENDING | {info_nft[-2]} | {ADDRESS}")
 
     TRY = 0
     while True:
         TX = await Gasless.check_tx_galxe(claim_nft_data)
         if TX["data"]["participations"][0]["tx"]:
             logger.success(
-                f"CLAIM | SUCCESS | {INFO_NFT[-2]} | {ADDRESS} | {TX['data']['participations'][0]['tx']}"
+                f"CLAIM | SUCCESS | {info_nft[-2]} | {ADDRESS} | {TX['data']['participations'][0]['tx']}"
             )
             return
         else:
-            logger.info(f"CLAIM | AWAIT | {INFO_NFT[-2]} | {ADDRESS}")
+            logger.info(f"CLAIM | AWAIT | {info_nft[-2]} | {ADDRESS}")
 
         TRY += 1
         if TRY >= 6:
-            logger.success(f"CLAIM | FAILED | {INFO_NFT[-2]} | {ADDRESS}")
+            logger.success(f"CLAIM | FAILED | {info_nft[-2]} | {ADDRESS}")
             return
         await asyncio.sleep(10)
 
 
-async def gassed(key, ID, INFO_NFT):
+async def gassed(key, id_, info_nft):
     ADDRESS = w3.eth.account.from_key(key).address
 
-    claim_nft_data = await Galxy.claim(ADDRESS, ID, W, INFO_NFT[-1])
+    claim_nft_data = await Galxy.claim(ADDRESS, id_, W, info_nft[-1])
 
-    if check_claim_data(claim_nft_data, INFO_NFT, ADDRESS):
+    if check_claim_data(claim_nft_data, info_nft, ADDRESS):
         return
 
-    gas = Gassed(RPC_BY_CHAIN[INFO_NFT[-1]])
+    gas = Gassed(RPC_BY_CHAIN[info_nft[-1]])
 
-    id_nft = int(INFO_NFT[-3])
+    id_nft = int(info_nft[-3])
     signature = claim_nft_data["data"]["prepareParticipate"]["signature"]
     nft_address = claim_nft_data["data"]["prepareParticipate"]["mintFuncInfo"][
         "nftCoreAddress"
@@ -95,14 +96,14 @@ async def gassed(key, ID, INFO_NFT):
         claim_nft_data["data"]["prepareParticipate"]["mintFuncInfo"]["verifyIDs"][0]
     )
 
-    logger.info(f"CLAIM | PENDING | {INFO_NFT[-2]} | {ADDRESS}")
+    logger.info(f"CLAIM | PENDING | {info_nft[-2]} | {ADDRESS}")
 
     tx = await gas.mint(key, id_nft, nft_address, powahs, id_claim, signature)
     if await gas.verif_tx(tx):
 
-        logger.success(f"CLAIM | SUCCESS | {INFO_NFT[-2]} | {ADDRESS} | {tx.hex()}")
+        logger.success(f"CLAIM | SUCCESS | {info_nft[-2]} | {ADDRESS} | {tx.hex()}")
     else:
-        logger.error(f"CLAIM | FAILED | {INFO_NFT[-2]} | {ADDRESS} | {tx.hex()}")
+        logger.error(f"CLAIM | FAILED | {info_nft[-2]} | {ADDRESS} | {tx.hex()}")
 
 
 async def claim_nft_queue(queue: asyncio.Queue):
@@ -118,7 +119,7 @@ async def claim_nft_queue(queue: asyncio.Queue):
             if information_by_id[0] == "Active":
 
                 if information_by_id[2] == "Gasless":
-                    await gasles(data_account, camp_id, information_by_id)
+                    await gasless(data_account, camp_id, information_by_id)
 
                 elif information_by_id[2] == "Gas":
                     await gassed(data_account, camp_id, information_by_id)
@@ -130,7 +131,7 @@ async def work():
     for key in key_list:
         queue_id.put_nowait(key)
 
-    claim_work = [claim_nft_queue(queue_id) for i in range(STREAMS)]
+    claim_work = [claim_nft_queue(queue_id) for _ in range(STREAMS)]
 
     await asyncio.gather(*claim_work)
 
@@ -173,7 +174,7 @@ async def main():
     ), "Add campaign id task.txt | format galxe.com/perp/campaign/XXXXXX OR GCUEJK"
 
     if not await Galxy.validation_config_w(W):
-        logger.info("Замените W в config.py")
+        logger.info("Invalid W.txt captcha")
         return
     else:
         await work()
