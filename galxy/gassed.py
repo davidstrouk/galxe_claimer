@@ -25,7 +25,7 @@ class Gassed:
 
         contract = web3.eth.contract(abi=json.loads(self.ABI))
         data = contract.encodeABI('claim',
-                           args=[numb_id, web3.toChecksumAddress(address_nft), id_claim, powahs, web3.toBytes(hexstr=_signature)])
+                           args=[numb_id, web3.to_checksum_address(address_nft), id_claim, powahs, web3.to_bytes(hexstr=_signature)])
 
         ADDRESS = web3.eth.account.from_key(key).address
 
@@ -34,7 +34,7 @@ class Gassed:
             'gasPrice': await web3.eth.gas_price,
             'chainId': await web3.eth.chain_id,
             'from': ADDRESS,
-            'to': web3.toChecksumAddress(self.contract_address[str(await web3.eth.chain_id)]),
+            'to': web3.to_checksum_address(self.contract_address[str(await web3.eth.chain_id)]),
             'data': data
         }
         tx['gas'] = int(await web3.eth.estimate_gas(tx) * 1.25)
