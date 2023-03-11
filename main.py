@@ -144,9 +144,13 @@ task_path = os.path.abspath('data_file/task.txt')
 with open(task_path, 'r') as f:
     task_list = [i for i in [i.strip() for i in f] if i != '']
 
-# ***********************************************************************************************************   
-    
-    
+w_path = os.path.abspath('data_file/W.txt')
+with open(w_path, 'r') as f:
+    W = f.readline().strip()
+
+# ***********************************************************************************************************
+
+
 async def main():
     assert len(key_list) > 0, 'Add private key key.txt'
     assert len(task_list) > 0, 'Add campaign id task.txt | format galxe.com/perp/campaign/XXXXXX OR GCUEJK'

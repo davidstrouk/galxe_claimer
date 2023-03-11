@@ -1,5 +1,3 @@
-W = ''
-
 STREAMS = 3
 
 RPC_BY_CHAIN={
